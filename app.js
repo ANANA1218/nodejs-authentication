@@ -2,8 +2,9 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { firewall, logHeaders } = require('./logHeadersMiddleware');
 const uuid = require('uuid'); 
-const { getRegisteredUsers } = require('./inMemoryUserRepository');
-
+const { getRegisteredUsers,newUserRegistered  } = require('./inMemoryUserRepository');
+const bcrypt = require('bcrypt');
+const db = require('./db');
 
 const app = express();
 app.use(bodyParser.json());
@@ -26,6 +27,48 @@ const { v4: uuidv4 } = require('uuid');
 });*/
 
 
+/*app.post('/register', (req, res) => {
+    const { email, password } = req.body;
+
+    
+    const userExists = getRegisteredUsers().some(user => user.email === email);
+
+    if (userExists) {
+        res.status(400).json({ error: 'User already exists' });
+    } else {
+  
+        newUserRegistered(email, password);
+        res.status(200).json({ message: 'User registered successfully' });
+    }
+});
+*/
+
+
+app.post('/register', async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+     
+        const result = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+        const existingUser = result[0]; 
+
+        if (existingUser) {
+            res.status(400).json({ error: 'User already exists' });
+        } else {
+       
+            await newUserRegistered(email, password);
+            res.status(200).json({ message: 'User registered successfully' });
+        }
+    } catch (error) {
+        console.error("Error registering user:", error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+
+
+
 app.post('/authenticate', (req, res) => {
     const { email, password } = req.body;
     const users = getRegisteredUsers();
@@ -44,6 +87,10 @@ app.post('/authenticate', (req, res) => {
         res.status(403).json({ error: 'Forbidden' });
     }
 });
+
+
+
+
 
 
 
